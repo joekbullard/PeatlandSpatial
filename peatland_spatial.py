@@ -232,8 +232,17 @@ class PeatlandSpatial:
 
             selected_layer_index = self.dlg.siteOutline.currentIndex()
             selected_layer = poly_layers[selected_layer_index]
-            layer_source = selected_layer.dataProvider().dataSourceUri() + '\n'
 
-            print(type(selected_layer))
+            layer_extent = selected_layer.extent()
+            xmin = layer_extent.xMinimum()
+            xmax = layer_extent.xMaximum()
+            ymin = layer_extent.yMinimum()
+            ymax = layer_extent.yMaximum()
+
+            # TODO copy site boundary to site_outline layer
+            # TODO iterate over features of new outline layer
+            # TODO generate extent then create points that fall within
+            # TODO add points to peat_depth layer
+            # TODO add option to generate 50m points in addition to 100m points
 
             pass
