@@ -24,7 +24,7 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject, QgsMapLayer
+from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayer
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -193,17 +193,17 @@ class PeatlandSpatial:
 
         # Fetch the currently loaded layers
         layers = QgsProject.instance().mapLayers().values()
+        poly_layers = []
+        for layer in layers:
+            if layer.type() == QgsMapLayer.VectorLayer:
+                if layer.geometryType() == QgsWkbTypes.PolygonGeometry:
+                    print(type(layer))
+                    poly_layers.append(layer)
         # Clear the contents of the comboBox from previous runs
         self.dlg.projectLocationEdit.clear()
         # Populate the comboBox with names of all the loaded layers
         self.dlg.siteOutline.clear()
-        self.dlg.siteOutline.addItems(
-            [
-                layer.name()
-                for layer in layers
-                if layer.type() == QgsMapLayer.VectorLayer
-            ]
-        )
+        self.dlg.siteOutline.addItems([layer.name() for layer in poly_layers])
 
         # show the dialog
         self.dlg.show()
@@ -211,14 +211,29 @@ class PeatlandSpatial:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
-
+            dirname = self.dlg.projectLocationEdit.text()
+            gpkg = Path(dirname) / "peat_depth_data.gpkg"
             # extract project file and geopackage to target directory
             # TODO add error handling block for when files already exist
             with ZipFile(
                 Path(__file__).parent / "peat_depth_files" / "peat_depth_template.zip"
-            ) as zip_src:
-                zip_src.extractall(self.dlg.projectLocationEdit.text())
+            ) as zf:
+                for f in zf.infolist():
+                    filename = Path(dirname) / f.filename
+                    if not Path(filename).exists():
+                        zf.extract(f, dirname)
+                    else:
+                        self.iface.messageBar().pushMessage(
+                            f"{f.filename} already exists at {dirname}",
+                            "Skipping extract",
+                            level=Qgis.Warning,
+                            duration=3,
+                        )
 
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
+            selected_layer_index = self.dlg.siteOutline.currentIndex()
+            selected_layer = poly_layers[selected_layer_index]
+            layer_source = selected_layer.dataProvider().dataSourceUri() + '\n'
+
+            print(type(selected_layer))
+
             pass
