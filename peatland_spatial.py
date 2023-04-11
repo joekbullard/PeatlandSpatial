@@ -24,13 +24,15 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject, Qgis, QgsMapLayer
+from qgis.core import QgsProject, QgsMapLayer
 
 # Initialize Qt resources from file resources.py
 from .resources import *
+
 # Import the code for the dialog
 from .peatland_spatial_dialog import PeatlandSpatialDialog
-import os.path
+from zipfile import ZipFile
+from pathlib import Path
 
 
 class PeatlandSpatial:
@@ -47,22 +49,21 @@ class PeatlandSpatial:
         # Save reference to the QGIS interface
         self.iface = iface
         # initialize plugin directory
-        self.plugin_dir = os.path.dirname(__file__)
+        self.plugin_dir = Path(__file__).parent
         # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'PeatlandSpatial_{}.qm'.format(locale))
+        locale = QSettings().value("locale/userLocale")[0:2]
+        locale_path = (
+            Path(self.plugin_dir) / "i18n" / "PeatlandSpatial_{}.qm".format(locale)
+        )
 
-        if os.path.exists(locale_path):
+        if Path(locale_path).exists():
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&Peatland ACTION Tools')
+        self.menu = self.tr("&Peatland ACTION Tools")
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -81,8 +82,7 @@ class PeatlandSpatial:
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('PeatlandSpatial', message)
-
+        return QCoreApplication.translate("PeatlandSpatial", message)
 
     def add_action(
         self,
@@ -94,7 +94,8 @@ class PeatlandSpatial:
         add_to_toolbar=True,
         status_tip=None,
         whats_this=None,
-        parent=None):
+        parent=None,
+    ):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -150,9 +151,7 @@ class PeatlandSpatial:
             self.iface.addToolBarIcon(action)
 
         if add_to_menu:
-            self.iface.addPluginToVectorMenu(
-                self.menu,
-                action)
+            self.iface.addPluginToVectorMenu(self.menu, action)
 
         self.actions.append(action)
 
@@ -161,41 +160,36 @@ class PeatlandSpatial:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/peatland_spatial/icon.png'
+        icon_path = ":/plugins/peatland_spatial/icon.png"
         self.add_action(
             icon_path,
-            text=self.tr(u'Generate peat depth grid'),
+            text=self.tr("Generate peat depth grid"),
             callback=self.run,
-            parent=self.iface.mainWindow())
+            parent=self.iface.mainWindow(),
+        )
 
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            self.iface.removePluginVectorMenu(
-                self.tr(u'&Peatland ACTION Tools'),
-                action)
+            self.iface.removePluginVectorMenu(self.tr("&Peatland ACTION Tools"), action)
             self.iface.removeToolBarIcon(action)
 
-    def select_output_folder(self):  
-        folder = QFileDialog.getExistingDirectory(  
-            self.dlg, "Select output folder")  
-        self.dlg.projectLocationEdit.setText(folder)  
+    def select_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(self.dlg, "Select output folder")
+        self.dlg.projectLocationEdit.setText(folder)
 
     def run(self):
         """Run method that performs all the real work"""
-
-        
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
             self.dlg = PeatlandSpatialDialog()
-            self.dlg.projectLocationTool.clicked.connect(self.select_output_folder)  
+            self.dlg.projectLocationTool.clicked.connect(self.select_output_folder)
 
         # Fetch the currently loaded layers
         layers = QgsProject.instance().mapLayers().values()
@@ -203,14 +197,28 @@ class PeatlandSpatial:
         self.dlg.projectLocationEdit.clear()
         # Populate the comboBox with names of all the loaded layers
         self.dlg.siteOutline.clear()
-        self.dlg.siteOutline.addItems([layer.name() for layer in layers if layer.type() == QgsMapLayer.VectorLayer])
-        
+        self.dlg.siteOutline.addItems(
+            [
+                layer.name()
+                for layer in layers
+                if layer.type() == QgsMapLayer.VectorLayer
+            ]
+        )
+
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
+
+            # extract project file and geopackage to target directory
+            # TODO add error handling block for when files already exist
+            with ZipFile(
+                Path(__file__).parent / "peat_depth_files" / "peat_depth_template.zip"
+            ) as zip_src:
+                zip_src.extractall(self.dlg.projectLocationEdit.text())
+
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass

@@ -33,4 +33,5 @@ def classFactory(iface):  # pylint: disable=invalid-name
     """
     #
     from .peatland_spatial import PeatlandSpatial
+
     return PeatlandSpatial(iface)
