@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/peatland_spatial" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
