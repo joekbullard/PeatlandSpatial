@@ -21,10 +21,19 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
-from qgis.core import QgsProject, Qgis, QgsWkbTypes, QgsMapLayer
+from qgis.core import (
+    edit,
+    QgsProject,
+    Qgis,
+    QgsWkbTypes,
+    QgsMapLayer,
+    QgsVectorFileWriter,
+    QgsVectorLayer,
+    QgsField,
+)
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -171,6 +180,33 @@ class PeatlandSpatial:
         # will be set False in run()
         self.first_start = True
 
+    def generate_peat_layer(self):
+        """Create a peat depth point layer"""
+        peat_layer = QgsVectorLayer("Point", "peat_depth_points", "memory")
+        crs = peat_layer.crs()
+        crs.createFromId(27700)
+        peat_layer.setCrs(crs)
+        pr = peat_layer.dataProvider()
+        
+        pr.addAttributes(
+            [
+                QgsField("record_id", QVariant.Int),
+                QgsField("easting", QVariant.Int),
+                QgsField("northing", QVariant.Int),
+                QgsField("date", QVariant.Date),
+                QgsField("peat_depth", QVariant.Int),
+                QgsField("main_con", QVariant.String),
+                QgsField("sub_con", QVariant.String),
+                QgsField("notes", QVariant.String),
+                QgsField("photo", QVariant.String),
+            ]
+        )
+        peat_layer.updateFields()
+
+        return peat_layer
+
+        
+
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -213,6 +249,7 @@ class PeatlandSpatial:
         if result:
             dirname = self.dlg.projectLocationEdit.text()
             gpkg = Path(dirname) / "peat_depth_data.gpkg"
+            print(gpkg)
             # extract project file and geopackage to target directory
             # TODO add error handling block for when files already exist
             with ZipFile(
@@ -233,11 +270,18 @@ class PeatlandSpatial:
             selected_layer_index = self.dlg.siteOutline.currentIndex()
             selected_layer = poly_layers[selected_layer_index]
 
-            layer_extent = selected_layer.extent()
-            xmin = layer_extent.xMinimum()
-            xmax = layer_extent.xMaximum()
-            ymin = layer_extent.yMinimum()
-            ymax = layer_extent.yMaximum()
+            peat_layer = self.generate_peat_layer()
+
+            QgsProject.instance().addMapLayer(peat_layer)
+            """
+            _writer = QgsVectorFileWriter.writeAsVectorFormat(
+                layer=selected_layer,
+                fileName=gpkg.as_posix(),
+                fileEncoding="utf-8",
+                destCRS=selected_layer.crs(),
+            )
+            """
+            # for feature in selected_layer.getFeatures():
 
             # TODO copy site boundary to site_outline layer
             # TODO iterate over features of new outline layer
