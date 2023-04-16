@@ -8,14 +8,13 @@
 
 """
 
-__author__ = 'joekbullard@gmail.com'
-__date__ = '2023-04-10'
-__copyright__ = 'Copyright 2023, Joe Bullard'
+__author__ = "joekbullard@gmail.com"
+__date__ = "2023-04-10"
+__copyright__ = "Copyright 2023, Joe Bullard"
 
 import unittest
 
 from qgis.PyQt.QtGui import QIcon
-
 
 
 class PeatlandSpatialDialogTest(unittest.TestCase):
@@ -31,14 +30,12 @@ class PeatlandSpatialDialogTest(unittest.TestCase):
 
     def test_icon_png(self):
         """Test we can click OK."""
-        path = ':/plugins/PeatlandSpatial/icon.png'
+        path = ":/plugins/PeatlandSpatial/icon.png"
         icon = QIcon(path)
         self.assertFalse(icon.isNull())
+
 
 if __name__ == "__main__":
     suite = unittest.makeSuite(PeatlandSpatialResourcesTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
-
-

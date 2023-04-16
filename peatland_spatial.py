@@ -23,6 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
+from .processing.provider import PeatlandSpatialProvider
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from qgis.core import (
     edit,
@@ -30,9 +31,12 @@ from qgis.core import (
     Qgis,
     QgsWkbTypes,
     QgsMapLayer,
-    QgsVectorFileWriter,
     QgsVectorLayer,
     QgsField,
+    QgsFeature,
+    QgsGeometry,
+    QgsPointXY,
+    QgsApplication,
 )
 
 # Initialize Qt resources from file resources.py
@@ -77,6 +81,13 @@ class PeatlandSpatial:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
+        self.provider = None
+
+    def initProcessing(self):
+
+        self.provider = PeatlandSpatialProvider()
+        QgsApplication.processingRegistry().addProvider(self.provider)
+
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -179,6 +190,7 @@ class PeatlandSpatial:
 
         # will be set False in run()
         self.first_start = True
+        self.initProcessing()
 
     def generate_peat_layer(self):
         """Create a peat depth point layer"""
@@ -187,13 +199,14 @@ class PeatlandSpatial:
         crs.createFromId(27700)
         peat_layer.setCrs(crs)
         pr = peat_layer.dataProvider()
-        
+
         pr.addAttributes(
             [
                 QgsField("record_id", QVariant.Int),
                 QgsField("easting", QVariant.Int),
                 QgsField("northing", QVariant.Int),
                 QgsField("date", QVariant.Date),
+                QgsField("spacing", QVariant.Int),
                 QgsField("peat_depth", QVariant.Int),
                 QgsField("main_con", QVariant.String),
                 QgsField("sub_con", QVariant.String),
@@ -205,13 +218,13 @@ class PeatlandSpatial:
 
         return peat_layer
 
-        
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginVectorMenu(self.tr("&Peatland ACTION Tools"), action)
             self.iface.removeToolBarIcon(action)
+
+        QgsApplication.processingRegistry().removeProvider(self.provider)
 
     def select_output_folder(self):
         folder = QFileDialog.getExistingDirectory(self.dlg, "Select output folder")
@@ -272,6 +285,55 @@ class PeatlandSpatial:
 
             peat_layer = self.generate_peat_layer()
 
+            count = 1
+
+            for feature in selected_layer.getFeatures():
+                geom = feature.geometry()
+                bbox = geom.boundingBox()
+
+                x_max = int(bbox.xMaximum())
+                y_max = int(bbox.yMaximum())
+                x_min = int(bbox.xMinimum())
+                y_min = int(bbox.yMinimum())
+
+                roundup = lambda a, b: a if a % b == 0 else a + b - a % b
+
+                start_x = roundup(x_min, 50)
+                start_y = roundup(y_min, 50)
+                end_x = x_max
+                end_y = y_max
+
+                y = start_y
+
+                with edit(peat_layer):
+
+                    while y < end_y:
+
+                        x = start_x
+
+                        while x < end_x:
+
+                            point = QgsGeometry.fromPointXY(QgsPointXY(x, y))
+
+                            if point.within(geom):
+
+                                feat = QgsFeature(peat_layer.fields())
+                                if x % 100 == 0 and y % 100 == 0:
+                                    feat.setAttribute("spacing", 100)
+                                else:
+                                    feat.setAttribute("spacing", 50)
+                                feat.setGeometry(point)
+                                feat.setAttribute("record_id", count)
+                                feat.setAttribute("easting", x)
+                                feat.setAttribute("northing", y)
+                                peat_layer.dataProvider().addFeatures([feat])
+
+                                count += 1
+
+                            x += 50
+
+                        y += 50
+
             QgsProject.instance().addMapLayer(peat_layer)
             """
             _writer = QgsVectorFileWriter.writeAsVectorFormat(
@@ -288,5 +350,3 @@ class PeatlandSpatial:
             # TODO generate extent then create points that fall within
             # TODO add points to peat_depth layer
             # TODO add option to generate 50m points in addition to 100m points
-
-            pass

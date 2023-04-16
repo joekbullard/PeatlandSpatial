@@ -8,9 +8,9 @@
 
 """
 
-__author__ = 'joekbullard@gmail.com'
-__date__ = '2023-04-10'
-__copyright__ = 'Copyright 2023, Joe Bullard'
+__author__ = "joekbullard@gmail.com"
+__date__ = "2023-04-10"
+__copyright__ = "Copyright 2023, Joe Bullard"
 
 import unittest
 
@@ -19,6 +19,7 @@ from qgis.PyQt.QtGui import QDialogButtonBox, QDialog
 from peatland_spatial_dialog import PeatlandSpatialDialog
 
 from utilities import get_qgis_app
+
 QGIS_APP = get_qgis_app()
 
 
@@ -48,8 +49,8 @@ class PeatlandSpatialDialogTest(unittest.TestCase):
         result = self.dialog.result()
         self.assertEqual(result, QDialog.Rejected)
 
+
 if __name__ == "__main__":
     suite = unittest.makeSuite(PeatlandSpatialDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
