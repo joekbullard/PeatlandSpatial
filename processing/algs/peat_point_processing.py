@@ -192,6 +192,7 @@ class PeatDepthPoints(QgsProcessingAlgorithm):
 
         # reproject layer if not EPSG:27700
         if source_crs is not peat_crs:
+            feedback.pushInfo("Site outline layer not in EPSG:27700 - Reprojecting")
             reproj = processing.run(
                 "qgis:reprojectlayer",
                 {

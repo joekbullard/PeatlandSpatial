@@ -14,6 +14,7 @@
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (
     QgsProcessing,
+    QgsFields,
     QgsFeatureSink,
     QgsProcessingException,
     QgsProject,
@@ -47,7 +48,7 @@ class PeatlandCodeAssessmentBase(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    SITE_INPUT = "INPUT"
+    INPUT = "INPUT"
     OUTPUT = "OUTPUT"
     WATER_COURSE = "WATER_COURSE"
     # PEATLAND_TYPE = "PEATLAND_TYPE"
@@ -118,7 +119,7 @@ class PeatlandCodeAssessmentBase(QgsProcessingAlgorithm):
         # input polygon geometry.
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.SITE_INPUT,
+                self.INPUT,
                 self.tr("Site boundary"),
                 [QgsProcessing.TypeVectorPolygon],
             )
@@ -126,9 +127,10 @@ class PeatlandCodeAssessmentBase(QgsProcessingAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.WATER_COURSE,
-                self.tr("Water course layer"),
-                [QgsProcessing.TypeVectorLine],
+                name=self.WATER_COURSE,
+                description=self.tr("Water course layer"),
+                types=[QgsProcessing.TypeVectorLine],
+                optional=True,
             )
         )
 
@@ -148,7 +150,64 @@ class PeatlandCodeAssessmentBase(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
-        pass
+        source = self.parameterAsSource(parameters, self.INPUT, context)
+        non_peatland_layers = self.parameterAsLayerList(
+            parameters, self.NON_PEATLAND, context
+        )
+        water_course = self.parameterAsVectorLayer(
+            parameters=parameters, name=self.WATER_COURSE, context=context
+        )
+
+        fields = QgsFields()
+
+        (sink, dest_id) = self.parameterAsSink(
+            parameters,
+            self.OUTPUT,
+            context,
+            fields,
+            source.wkbType(),
+            source.sourceCrs(),
+        )
+
+        if source is None:
+            raise QgsProcessingException(
+                self.invalidSourceError(parameters, self.INPUT)
+            )
+
+        for count, layer in enumerate(non_peatland_layers):
+            if layer.crs() is not QgsCoordinateReferenceSystem(27700):
+                non_peatland_layers[count] = processing.run(
+                    "qgis:reprojectlayer",
+                    {
+                        "INPUT": layer,
+                        "TARGET_CRS": "EPSG:27700",
+                        "OUTPUT": "memory:",
+                    },
+                )["OUTPUT"]
+
+        if water_course is not None:
+            water_buffer = processing.run(
+                "native:buffer",
+                {
+                    "INPUT": water_course,
+                    "DISTANCE": 30,
+                    "DISSOLVE": True,
+                    "TARGET_CRS": "EPSG:27700",
+                    "OUTPUT": "memory:",
+                },
+            )["OUTPUT"]
+
+        if len(non_peatland_layers) > 1:
+            merged = processing.run(
+                "qgis:mergevectorlayers",
+                {
+                    "INPUT": non_peatland_layers,
+                    "OUTPUT": "memory:",
+                },
+            )["OUTPUT"]
+        else:
+            merged = non_peatland_layers[0]
+
         """
         feedback.pushInfo("Starting processing algo")
 

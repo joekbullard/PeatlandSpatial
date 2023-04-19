@@ -13,10 +13,10 @@ class PeatlandSpatialProvider(QgsProcessingProvider):
 
     def name(self):
         return self.tr("Peatland spatial")
-    
+
     def icon(self):
         return QgsProcessingProvider.icon(self)
-    
+
     def load(self):
         self.refreshAlgorithms()
         return True
@@ -29,10 +29,3 @@ class PeatlandSpatialProvider(QgsProcessingProvider):
         self.algs = self.getAlgs()
         for a in self.algs:
             self.addAlgorithm(a)
-
-
-
-
-    
-
-    

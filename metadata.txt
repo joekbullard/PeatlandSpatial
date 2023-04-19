@@ -3,14 +3,14 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Peatland ACTION Tools
+name=Peatland Spatial Tools
 qgisMinimumVersion=3.22
-description=This plugin contains tools for working with Peatland ACTION spatial data
+description=This plugin contains tools for working with peatland restoration spatial data
 version=0.1
 author=Joe Bullard
 email=joekbullard@gmail.com
 
-about=This plugin contains processing tools for working with Peatland ACTION spatial data, including peat depth and condition surveys and restoration data.
+about=This plugin contains processing tools for working with peatland restoration spatial data, including peat depth and condition surveys and restoration data.
 
 tracker=http://bugs
 repository=http://repo

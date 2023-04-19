@@ -88,7 +88,6 @@ class PeatlandSpatial:
         self.provider = PeatlandSpatialProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
 
-
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
         """Get the translation for a string using Qt translation API.
